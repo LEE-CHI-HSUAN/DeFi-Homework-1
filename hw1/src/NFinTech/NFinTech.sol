@@ -76,29 +76,76 @@ contract NFinTech is IERC721 {
 
     function setApprovalForAll(address operator, bool approved) external {
         // TODO: please add your implementaiton here
+        require(operator != address(0));
+    
+        _operatorApproval[msg.sender][operator] = approved;
+        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     function isApprovedForAll(address owner, address operator) public view returns (bool) {
         // TODO: please add your implementaiton here
+        return _operatorApproval[owner][operator];
     }
 
     function approve(address to, uint256 tokenId) external {
         // TODO: please add your implementaiton here
+        address owner = _owner[tokenId];
+        require(owner != address(0));
+        // Throws unless `msg.sender` is the current NFT owner, or an authorized
+        // operator of the current owner.
+        // single-token approvals should not be able to call approve
+        require(owner == msg.sender || isApprovedForAll(owner, msg.sender));
+
+        emit Approval(owner, to, tokenId);
+        _tokenApproval[tokenId] = to;
     }
 
     function getApproved(uint256 tokenId) public view returns (address operator) {
         // TODO: please add your implementaiton here
+        address owner = _owner[tokenId];
+        require(owner != address(0));
+    
+        return _tokenApproval[tokenId];
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public {
         // TODO: please add your implementaiton here
+        require(from == _owner[tokenId]);
+        require(to != address(0));
+
+        require(msg.sender == from || isApprovedForAll(from, msg.sender) || msg.sender == getApproved(tokenId));
+
+        unchecked {
+            _balances[from]--;
+            _balances[to]++;
+        }
+
+        _owner[tokenId] = to;
+        _tokenApproval[tokenId] = address(0);
+        emit Transfer(from, to, tokenId);
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) public {
         // TODO: please add your implementaiton here
+        transferFrom(from, to, tokenId);
+
+        require(
+            to.code.length == 0 ||
+                IERC721TokenReceiver(to).onERC721Received(msg.sender, from, tokenId, data) ==
+                IERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId) public {
         // TODO: please add your implementaiton here
+        transferFrom(from, to, tokenId);
+
+        require(
+            to.code.length == 0 ||
+                IERC721TokenReceiver(to).onERC721Received(msg.sender, from, tokenId, "") ==
+                IERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
     }
 }
